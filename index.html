@@ -887,12 +887,12 @@ function selectImage(url) {
 // Convert Google Drive share URL to a direct-view URL
 function driveToDirectUrl(url) {
   if (!url) return url;
-  // Already a direct URL (picsum, etc.)
   if (!url.includes('drive.google.com')) return url;
   // Extract file ID from various Drive URL shapes
   const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) ||
             url.match(/id=([a-zA-Z0-9_-]+)/);
-  if (m) return `https://drive.google.com/uc?export=view&id=${m[1]}`;
+  // thumbnail format renders in img tags for public Drive files
+  if (m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w500`;
   return url;
 }
 
