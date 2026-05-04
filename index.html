@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Studio Strong — Social Review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;1,400&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy:   #0f1d35;
+      --navy2:  #1a2f52;
+      --orange: #f05a28;
+      --orange2:#d94e20;
+      --cream:  #fafaf7;
+      --muted:  #8a9ab5;
+      --border: #dde3ee;
+      --brand-pill: #1a5cad;
+      --doreen-pill:#c2185b;
+      --approved: #1a8a4a;
+      --review:  #d68910;
+      --draft:   #8a9ab5;
+      --card:    #ffffff;
+      --shadow:  0 2px 12px rgba(15,29,53,0.10);
+      --shadow-lg: 0 8px 32px rgba(15,29,53,0.18);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      background: var(--cream);
+      color: var(--navy);
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: var(--navy);
+      color: white;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+    .header-logo {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header-logo span { color: var(--orange); }
+    .month-nav {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .month-nav button {
+      background: rgba(255,255,255,0.12);
+      border: none;
+      color: white;
+      width: 32px; height: 32px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s;
+    }
+    .month-nav button:hover { background: rgba(255,255,255,0.22); }
+    .month-label {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      min-width: 160px;
+      text-align: center;
+    }
+    .header-status {
+      font-size: 13px;
+      color: rgba(255,255,255,0.6);
+      font-weight: 500;
+    }
+    #loading-bar {
+      position: fixed; top: 60px; left: 0; right: 0; height: 3px;
+      background: var(--orange);
+      transform: scaleX(0); transform-origin: left;
+      transition: transform .3s; z-index: 200;
+    }
+    #loading-bar.active { transform: scaleX(0.7); }
+    #loading-bar.done   { transform: scaleX(1); opacity: 0; transition: transform .2s, opacity .3s .2s; }
+
+    /* ── LEGEND ── */
+    .legend {
+      display: flex; gap: 20px; align-items: center;
+      padding: 12px 24px;
+      background: white;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--muted); }
+    .legend-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+    }
+    .legend-pill { width: 24px; height: 10px; border-radius: 10px; }
+
+    /* ── CALENDAR ── */
+    .calendar-wrap { padding: 20px 20px 40px; max-width: 1100px; margin: 0 auto; }
+    .calendar-dow {
+      display: grid; grid-template-columns: repeat(7,1fr);
+      text-align: center;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 13px; font-weight: 600;
+      letter-spacing: 1px; color: var(--muted);
+      padding: 0 0 8px;
+    }
+    .calendar-grid {
+      display: grid; grid-template-columns: repeat(7,1fr);
+      gap: 6px;
+    }
+    .cal-cell {
+      background: var(--card);
+      border-radius: 10px;
+      min-height: 90px;
+      padding: 8px 8px 6px;
+      border: 1px solid var(--border);
+      transition: box-shadow .15s;
+    }
+    .cal-cell.other-month { opacity: .35; }
+    .cal-cell.today { border-color: var(--orange); }
+    .cal-date {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 18px; font-weight: 700;
+      color: var(--navy2);
+      margin-bottom: 6px;
+      line-height: 1;
+    }
+    .cal-cell.today .cal-date {
+      color: var(--orange);
+    }
+    .pills { display: flex; flex-direction: column; gap: 5px; }
+    .pill {
+      border-radius: 20px;
+      padding: 3px 9px;
+      font-size: 11px; font-weight: 700;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 4px;
+      transition: opacity .15s, transform .12s;
+      letter-spacing: .3px;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .pill:hover { opacity: .85; transform: translateY(-1px); }
+    .pill.brand  { background: var(--brand-pill); color: white; }
+    .pill.doreen { background: var(--doreen-pill); color: white; }
+    .pill.approved { opacity: .7; }
+    .pill-label { overflow: hidden; text-overflow: ellipsis; flex: 1; }
+    .pill-icon { flex-shrink: 0; font-size: 10px; }
+
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      text-align: center; padding: 80px 20px; color: var(--muted);
+    }
+    .empty-state .es-icon { font-size: 48px; margin-bottom: 16px; }
+    .empty-state h3 { font-family: 'Barlow Condensed', sans-serif; font-size: 24px; margin-bottom: 8px; color: var(--navy2); }
+
+    /* ── REVIEW OVERLAY ── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(10,20,40,.55);
+      backdrop-filter: blur(3px);
+      z-index: 300;
+      display: none; align-items: flex-start; justify-content: flex-end;
+    }
+    .overlay.open { display: flex; }
+    .panel {
+      width: min(680px, 100vw);
+      height: 100vh;
+      background: var(--cream);
+      overflow-y: auto;
+      display: flex; flex-direction: column;
+      box-shadow: -8px 0 40px rgba(0,0,0,0.2);
+      animation: slideIn .22s ease-out;
+    }
+    @keyframes slideIn {
+      from { transform: translateX(60px); opacity: 0; }
+      to   { transform: translateX(0);    opacity: 1; }
+    }
+
+    /* Panel Header */
+    .panel-header {
+      background: var(--navy);
+      color: white;
+      padding: 16px 20px;
+      display: flex; align-items: center; gap: 14px;
+      flex-shrink: 0;
+    }
+    .btn-back {
+      background: rgba(255,255,255,.12);
+      border: none; color: white;
+      width: 34px; height: 34px;
+      border-radius: 8px; cursor: pointer;
+      font-size: 18px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s;
+    }
+    .btn-back:hover { background: rgba(255,255,255,.22); }
+    .panel-meta { flex: 1; }
+    .panel-meta-date {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 13px; color: rgba(255,255,255,.6); letter-spacing: .5px;
+    }
+    .panel-meta-theme {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 20px; font-weight: 700; line-height: 1.15;
+    }
+    .voice-badge {
+      padding: 4px 12px; border-radius: 20px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 13px; font-weight: 700; letter-spacing: 1px;
+      flex-shrink: 0;
+    }
+    .voice-badge.brand  { background: #1a5cad; color: white; }
+    .voice-badge.doreen { background: #c2185b; color: white; }
+
+    /* Panel sections */
+    .panel-section {
+      background: white;
+      margin: 14px 16px 0;
+      border-radius: 12px;
+      padding: 16px;
+      border: 1px solid var(--border);
+    }
+    .panel-section:last-of-type { margin-bottom: 14px; }
+    .section-label {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 13px; font-weight: 700;
+      letter-spacing: 1.5px; color: var(--muted);
+      margin-bottom: 10px; text-transform: uppercase;
+    }
+
+    /* Tags row */
+    .tags-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .tag {
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 700;
+      background: var(--cream); color: var(--navy2);
+      border: 1px solid var(--border);
+    }
+
+    /* Caption */
+    .caption-textarea {
+      width: 100%; border: 1.5px solid var(--border);
+      border-radius: 8px; padding: 12px;
+      font-family: 'Nunito', sans-serif; font-size: 14px;
+      line-height: 1.6; color: var(--navy);
+      resize: vertical; min-height: 120px;
+      transition: border-color .15s;
+      background: var(--cream);
+    }
+    .caption-textarea:focus { outline: none; border-color: var(--orange); background: white; }
+    .hashtag-input {
+      width: 100%;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      padding: 8px 12px; margin-top: 8px;
+      font-family: 'Nunito', sans-serif; font-size: 13px;
+      color: var(--brand-pill); background: var(--cream);
+      transition: border-color .15s;
+    }
+    .hashtag-input:focus { outline: none; border-color: var(--orange); background: white; }
+    .char-count { font-size: 11px; color: var(--muted); text-align: right; margin-top: 4px; }
+
+    /* Images */
+    .images-grid {
+      display: grid; grid-template-columns: repeat(3,1fr); gap: 10px;
+    }
+    .image-card {
+      border: 2.5px solid var(--border);
+      border-radius: 10px; overflow: hidden;
+      cursor: pointer; position: relative;
+      transition: border-color .15s, box-shadow .15s;
+      background: #f0f3f8;
+    }
+    .image-card:hover { box-shadow: var(--shadow); }
+    .image-card.selected { border-color: var(--approved); box-shadow: 0 0 0 3px rgba(26,138,74,.15); }
+    .image-card img {
+      width: 100%; aspect-ratio: 1/1;
+      object-fit: cover; display: block;
+    }
+    .image-card .img-placeholder {
+      width: 100%; aspect-ratio: 1/1;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      color: var(--muted); font-size: 12px;
+      gap: 6px; background: #e8edf5;
+      padding: 12px; text-align: center;
+    }
+    .img-placeholder-icon { font-size: 28px; }
+    .image-card-footer {
+      padding: 8px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .img-label {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 12px; font-weight: 700;
+      letter-spacing: 1px; color: var(--muted);
+    }
+    .btn-select {
+      font-size: 11px; font-weight: 700;
+      padding: 3px 10px; border-radius: 20px;
+      border: 1.5px solid var(--border);
+      background: white; cursor: pointer;
+      color: var(--navy2); transition: all .15s;
+    }
+    .btn-select:hover { border-color: var(--approved); color: var(--approved); }
+    .image-card.selected .btn-select {
+      background: var(--approved); border-color: var(--approved);
+      color: white;
+    }
+    .selected-badge {
+      position: absolute; top: 6px; right: 6px;
+      background: var(--approved); color: white;
+      width: 22px; height: 22px; border-radius: 50%;
+      display: none; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700;
+    }
+    .image-card.selected .selected-badge { display: flex; }
+    .no-images-msg {
+      color: var(--muted); font-size: 13px; font-style: italic;
+      padding: 8px 0;
+    }
+
+    /* Feedback */
+    .feedback-row { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+    .feedback-select {
+      flex: 0 0 auto;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      padding: 8px 12px; background: var(--cream);
+      font-family: 'Nunito', sans-serif; font-size: 13px;
+      color: var(--navy); cursor: pointer;
+      transition: border-color .15s;
+    }
+    .feedback-select:focus { outline: none; border-color: var(--orange); }
+    .feedback-notes {
+      flex: 1; min-width: 180px;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      padding: 8px 12px; background: var(--cream);
+      font-family: 'Nunito', sans-serif; font-size: 13px;
+      color: var(--navy); resize: none; height: 70px;
+      transition: border-color .15s;
+    }
+    .feedback-notes:focus { outline: none; border-color: var(--orange); background: white; }
+
+    /* Panel footer */
+    .panel-footer {
+      background: white;
+      border-top: 1px solid var(--border);
+      padding: 14px 20px;
+      display: flex; gap: 10px; align-items: center;
+      flex-shrink: 0;
+      position: sticky; bottom: 0;
+    }
+    .btn-cancel {
+      flex: 0 0 auto;
+      background: transparent; border: 1.5px solid var(--border);
+      color: var(--muted); padding: 10px 20px;
+      border-radius: 8px; cursor: pointer;
+      font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700;
+      transition: all .15s;
+    }
+    .btn-cancel:hover { border-color: var(--muted); color: var(--navy); }
+    .btn-approve {
+      flex: 1;
+      background: var(--orange); border: none;
+      color: white; padding: 12px 24px;
+      border-radius: 8px; cursor: pointer;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 18px; font-weight: 700; letter-spacing: 1px;
+      transition: background .15s, transform .1s;
+    }
+    .btn-approve:hover { background: var(--orange2); transform: translateY(-1px); }
+    .btn-approve:active { transform: translateY(0); }
+    .btn-approve:disabled { background: var(--muted); cursor: not-allowed; transform: none; }
+    .approved-check {
+      color: var(--approved); font-weight: 700; font-size: 14px;
+      display: none; align-items: center; gap: 6px;
+    }
+    .approved-check.show { display: flex; }
+
+    /* Status summary strip */
+    .summary-strip {
+      display: flex; gap: 16px; padding: 10px 20px;
+      background: white; border-bottom: 1px solid var(--border);
+      font-size: 13px; font-weight: 600; flex-wrap: wrap;
+    }
+    .sstat { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+    .sstat-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    /* Toast */
+    #toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: var(--navy); color: white;
+      padding: 10px 20px; border-radius: 30px;
+      font-size: 14px; font-weight: 600;
+      box-shadow: var(--shadow-lg);
+      transition: transform .3s; z-index: 999;
+      white-space: nowrap;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* Config banner */
+    .config-banner {
+      background: #fff3cd; border-bottom: 2px solid #f0c330;
+      padding: 10px 20px; font-size: 13px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .config-banner a { color: var(--orange2); font-weight: 700; }
+
+    @media (max-width: 600px) {
+      .calendar-grid { gap: 3px; }
+      .cal-cell { min-height: 70px; padding: 5px; }
+      .cal-date { font-size: 14px; }
+      .pill { font-size: 9px; padding: 2px 5px; }
+      .images-grid { grid-template-columns: repeat(3,1fr); gap: 6px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loading-bar"></div>
+
+<!-- ── HEADER ── -->
+<header class="header">
+  <div class="header-logo">
+    <span>SS</span> Social Review
+  </div>
+  <div class="month-nav">
+    <button id="prev-month" title="Previous month">&#8249;</button>
+    <div class="month-label" id="month-label">May 2026</div>
+    <button id="next-month" title="Next month">&#8250;</button>
+  </div>
+  <div class="header-status" id="header-status">Loading…</div>
+</header>
+
+<!-- ── CONFIG BANNER (shown when webhooks not set) ── -->
+<div class="config-banner" id="config-banner" style="display:none">
+  ⚠️ <strong>Demo mode</strong> — sample data shown. Set webhook URLs in CONFIG at top of file.
+</div>
+
+<!-- ── SUMMARY STRIP ── -->
+<div class="summary-strip" id="summary-strip">
+  <div class="sstat"><div class="sstat-dot" style="background:var(--review)"></div><span id="s-review">0 to review</span></div>
+  <div class="sstat"><div class="sstat-dot" style="background:var(--approved)"></div><span id="s-approved">0 approved</span></div>
+  <div class="sstat"><div class="sstat-dot" style="background:var(--draft)"></div><span id="s-draft">0 draft/pending</span></div>
+</div>
+
+<!-- ── LEGEND ── -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-pill" style="background:var(--brand-pill)"></div> Brand voice</div>
+  <div class="legend-item"><div class="legend-pill" style="background:var(--doreen-pill)"></div> Doreen voice</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--review)"></div> Ready to review</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--approved)"></div> Approved</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--draft)"></div> Not ready yet</div>
+</div>
+
+<!-- ── CALENDAR ── -->
+<div class="calendar-wrap">
+  <div class="calendar-dow">
+    <div>SUN</div><div>MON</div><div>TUE</div><div>WED</div>
+    <div>THU</div><div>FRI</div><div>SAT</div>
+  </div>
+  <div class="calendar-grid" id="calendar-grid"></div>
+</div>
+
+<!-- ── REVIEW OVERLAY ── -->
+<div class="overlay" id="overlay">
+  <div class="panel" id="panel">
+
+    <div class="panel-header">
+      <button class="btn-back" id="btn-back" title="Back to calendar">&#8592;</button>
+      <div class="panel-meta">
+        <div class="panel-meta-date" id="panel-date"></div>
+        <div class="panel-meta-theme" id="panel-theme"></div>
+      </div>
+      <div class="voice-badge" id="panel-voice-badge"></div>
+    </div>
+
+    <!-- Post meta tags -->
+    <div class="panel-section">
+      <div class="section-label">Post Details</div>
+      <div class="tags-row" id="panel-tags"></div>
+      <div style="font-size:12px;color:var(--muted)">Suggested time: <strong id="panel-time">—</strong></div>
+    </div>
+
+    <!-- Caption -->
+    <div class="panel-section">
+      <div class="section-label">Caption</div>
+      <textarea class="caption-textarea" id="caption-edit" placeholder="Caption will appear here…"></textarea>
+      <div class="char-count"><span id="char-count">0</span> chars</div>
+      <input class="hashtag-input" id="hashtag-edit" placeholder="#hashtags" type="text">
+    </div>
+
+    <!-- Images -->
+    <div class="panel-section">
+      <div class="section-label">Images — tap to select</div>
+      <div class="images-grid" id="images-grid"></div>
+    </div>
+
+    <!-- Image Brief (read-only context) -->
+    <div class="panel-section" id="brief-section">
+      <div class="section-label">Image Brief</div>
+      <div id="panel-brief" style="font-size:13px;color:var(--navy2);line-height:1.5"></div>
+    </div>
+
+    <!-- Feedback -->
+    <div class="panel-section">
+      <div class="section-label">Image Feedback <span style="font-weight:400;font-style:italic">(optional)</span></div>
+      <div class="feedback-row">
+        <select class="feedback-select" id="feedback-tag">
+          <option value="">— pick a tag —</option>
+          <option value="loved-it">💚 Loved it</option>
+          <option value="ok">👍 OK</option>
+          <option value="brief-missed">🎯 Brief missed</option>
+          <option value="used-manus">🖼 Used Manus</option>
+        </select>
+        <textarea class="feedback-notes" id="feedback-notes"
+          placeholder="Any notes for next month's image generation…"></textarea>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="panel-footer">
+      <button class="btn-cancel" id="btn-cancel">Cancel</button>
+      <button class="btn-approve" id="btn-approve">APPROVE POST ✓</button>
+      <div class="approved-check" id="approved-check">✅ Approved!</div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- ════════════════════════════════════════════════════
+     CONFIGURATION — Dave: fill in your n8n webhook URLs
+════════════════════════════════════════════════════ -->
+<script>
+const CONFIG = {
+  // n8n webhook: GET ?month=2026-05 → returns array of posts
+  GET_POSTS_WEBHOOK: '',
+  // n8n webhook: POST JSON body → updates Notion, returns {ok:true}
+  APPROVE_WEBHOOK:   '',
+  // Set to true to force demo data even when webhooks are set
+  DEMO_MODE: false,
+};
+
+// ── DEMO DATA ─────────────────────────────────────────
+function demoPostsForMonth(year, month) {
+  const days = new Date(year, month + 1, 0).getDate();
+  const voices = ['brand', 'doreen'];
+  const types  = ['educational','promotional','community','trainer_spotlight','kids_sports'];
+  const themes = [
+    'Monday Motivation','Abs & Assets Challenge','Spring Into Shape',
+    'Healthy Habits Start Here','O\'Fallon Community Walk','Total Gym Tips',
+    'Perimenopause & Fitness','Kids Sports Training','Tax Day Special Offer',
+    'Trainer Spotlight — Doreen','Friday Fun Workout','Rest Day Recovery',
+  ];
+  const statuses = ['ready_for_review','ready_for_review','approved','draft','needs_photo'];
+  const posts = [];
+  for (let d = 1; d <= days; d++) {
+    voices.forEach((v, vi) => {
+      const status = statuses[Math.floor(Math.random() * statuses.length)];
+      posts.push({
+        id: `demo-${year}-${month+1}-${d}-${v}`,
+        theme: themes[Math.floor(Math.random() * themes.length)],
+        voice: v,
+        postDate: `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`,
+        status,
+        captionA: v === 'brand'
+          ? `💪 Ready to level up your training? This ${new Date(year,month,d).toLocaleDateString('en',{weekday:'long'})} is YOUR day to show up stronger. The Abs & Assets Challenge is waiting for you.\n\nBook your spot. Show up. Do the work. 🔥\n\nDM us to get started!`
+          : `Ok y'all… I almost talked myself out of today's workout lol. But I got in 12 minutes on the Total Gym and honestly? My knees thanked me. 💯 #usewhatyougotdowhatyoucan`,
+        selectedCaption: '',
+        hashtags: v === 'brand'
+          ? '#StudioStrong #OFallon #AbsAndAssets #FitnessMotivation #BoutiqueGym'
+          : '#StudioStrong #OFallon #RealLife #usewhatyougotdowhatyoucan #perimenopause',
+        imageBrief: `Clean fitness graphic, small private studio setting, warm lighting, navy and orange brand colors. ${v === 'doreen' ? 'Personal, relatable mood — no stock photo people.' : 'Motivational, bold text-forward design.'}`,
+        imageUrlA: `https://picsum.photos/seed/${v}${d}a/400/400`,
+        imageUrlB: `https://picsum.photos/seed/${v}${d}b/400/400`,
+        imageUrlC: `https://picsum.photos/seed/${v}${d}c/400/400`,
+        selectedImageUrl: status === 'approved' ? `https://picsum.photos/seed/${v}${d}a/400/400` : '',
+        postType: types[d % types.length],
+        suggestedTime: v === 'brand' ? '8:00 AM' : '6:30 PM',
+        audience: v === 'kids_sports' ? 'Kids Sports' : 'Adults',
+        feedbackTag: '',
+        imageFeedback: '',
+      });
+    });
+  }
+  return posts;
+}
+
+// ── STATE ─────────────────────────────────────────────
+const state = {
+  today: new Date(),
+  year: new Date().getFullYear(),
+  month: new Date().getMonth(), // 0-indexed
+  posts: [],
+  activePost: null,
+  saving: false,
+};
+
+// ── UTILS ─────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const MONTHS = ['January','February','March','April','May','June',
+                'July','August','September','October','November','December'];
+const STATUS_ORDER = { ready_for_review:0, needs_photo:1, approved:2, draft:3,
+                       skeleton:4, generation_failed:5, image_failed:5, scheduling_failed:5 };
+
+function pillColor(post) {
+  if (post.status === 'ready_for_review') return ''; // full color
+  if (post.status === 'approved') return 'approved';
+  return 'draft-state';
+}
+
+function statusIcon(status) {
+  if (status === 'approved') return '✓';
+  if (status === 'ready_for_review') return '●';
+  if (status === 'needs_photo') return '⌛';
+  return '○';
+}
+
+function showToast(msg, dur = 2500) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+function startLoad() {
+  const lb = $('loading-bar'); lb.className = 'active';
+}
+function endLoad() {
+  const lb = $('loading-bar'); lb.className = 'done';
+  setTimeout(() => lb.className = '', 500);
+}
+
+// ── FETCH POSTS ───────────────────────────────────────
+async function fetchPosts() {
+  const monthStr = `${state.year}-${String(state.month + 1).padStart(2,'0')}`;
+  $('header-status').textContent = 'Loading…';
+  startLoad();
+
+  const isDemoMode = CONFIG.DEMO_MODE || !CONFIG.GET_POSTS_WEBHOOK;
+  if (isDemoMode) {
+    $('config-banner').style.display = 'flex';
+    await new Promise(r => setTimeout(r, 300));
+    state.posts = demoPostsForMonth(state.year, state.month);
+    endLoad();
+    $('header-status').textContent = `Demo — ${state.posts.length} posts`;
+    renderCalendar();
+    updateSummary();
+    return;
+  }
+
+  $('config-banner').style.display = 'none';
+  try {
+    const res = await fetch(`${CONFIG.GET_POSTS_WEBHOOK}?month=${monthStr}`, {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    // n8n wraps in array — handle both shapes
+    state.posts = Array.isArray(data) ? data : (data.posts || []);
+    $('header-status').textContent = `${state.posts.length} posts`;
+  } catch(e) {
+    console.error(e);
+    $('header-status').textContent = 'Error loading';
+    showToast(`⚠️ Could not load posts: ${e.message}`, 4000);
+    state.posts = [];
+  }
+  endLoad();
+  renderCalendar();
+  updateSummary();
+}
+
+// ── RENDER CALENDAR ───────────────────────────────────
+function renderCalendar() {
+  $('month-label').textContent = `${MONTHS[state.month]} ${state.year}`;
+  const grid = $('calendar-grid');
+  grid.innerHTML = '';
+
+  // Build map: date → posts
+  const map = {};
+  state.posts.forEach(p => {
+    const day = p.postDate?.split('-')[2];
+    if (!day) return;
+    const k = parseInt(day, 10);
+    if (!map[k]) map[k] = [];
+    map[k].push(p);
+  });
+
+  // First day of month (0=Sun)
+  const firstDay = new Date(state.year, state.month, 1).getDay();
+  const daysInMonth = new Date(state.year, state.month + 1, 0).getDate();
+  const prevDays = new Date(state.year, state.month, 0).getDate();
+
+  let cells = [];
+
+  // Padding before
+  for (let i = firstDay - 1; i >= 0; i--) {
+    cells.push({ day: prevDays - i, cur: false });
+  }
+  // Current month
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push({ day: d, cur: true });
+  }
+  // Padding after (complete last row)
+  let after = 1;
+  while (cells.length % 7 !== 0) cells.push({ day: after++, cur: false });
+
+  const todayD = state.today.getDate();
+  const todayM = state.today.getMonth();
+  const todayY = state.today.getFullYear();
+
+  cells.forEach(({ day, cur }) => {
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell' + (cur ? '' : ' other-month');
+    if (cur && day === todayD && state.month === todayM && state.year === todayY) {
+      cell.classList.add('today');
+    }
+
+    const dateEl = document.createElement('div');
+    dateEl.className = 'cal-date';
+    dateEl.textContent = day;
+    cell.appendChild(dateEl);
+
+    if (cur) {
+      const posts = (map[day] || []).sort((a, b) =>
+        (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9));
+      const pillsEl = document.createElement('div');
+      pillsEl.className = 'pills';
+      posts.forEach(p => {
+        const pill = document.createElement('div');
+        pill.className = `pill ${p.voice} ${p.status === 'approved' ? 'approved' : ''}`;
+        pill.style.opacity = ['draft','skeleton','needs_photo'].includes(p.status) ? '.55' : '1';
+        pill.innerHTML = `<span class="pill-label">${p.voice === 'brand' ? 'Brand' : 'Doreen'}</span>
+                          <span class="pill-icon">${statusIcon(p.status)}</span>`;
+        pill.title = `${p.theme} — ${p.status.replace(/_/g,' ')}`;
+        pill.addEventListener('click', () => openPost(p.id));
+        pillsEl.appendChild(pill);
+      });
+      cell.appendChild(pillsEl);
+    }
+    grid.appendChild(cell);
+  });
+}
+
+// ── UPDATE SUMMARY STRIP ──────────────────────────────
+function updateSummary() {
+  const review  = state.posts.filter(p => p.status === 'ready_for_review').length;
+  const approved = state.posts.filter(p => p.status === 'approved').length;
+  const other   = state.posts.length - review - approved;
+  $('s-review').textContent   = `${review} to review`;
+  $('s-approved').textContent = `${approved} approved`;
+  $('s-draft').textContent    = `${other} pending`;
+}
+
+// ── OPEN POST ─────────────────────────────────────────
+function openPost(id) {
+  const post = state.posts.find(p => p.id === id);
+  if (!post) return;
+  state.activePost = { ...post }; // work on a copy
+
+  // Header
+  const d = new Date(post.postDate + 'T12:00:00');
+  $('panel-date').textContent = d.toLocaleDateString('en-US', {
+    weekday:'long', month:'long', day:'numeric', year:'numeric'
+  });
+  $('panel-theme').textContent = post.theme || '(no theme)';
+  const vb = $('panel-voice-badge');
+  vb.textContent = post.voice === 'brand' ? 'BRAND' : 'DOREEN';
+  vb.className = `voice-badge ${post.voice}`;
+
+  // Tags
+  const tags = $('panel-tags');
+  tags.innerHTML = '';
+  [post.postType, post.audience, post.status?.replace(/_/g,' ')].filter(Boolean).forEach(t => {
+    const el = document.createElement('div');
+    el.className = 'tag'; el.textContent = t;
+    tags.appendChild(el);
+  });
+
+  $('panel-time').textContent = post.suggestedTime || '—';
+
+  // Caption
+  const cap = $('caption-edit');
+  cap.value = post.selectedCaption || post.captionA || '';
+  updateCharCount();
+  $('hashtag-edit').value = post.hashtags || '';
+
+  // Images
+  renderImages(post);
+
+  // Brief
+  $('panel-brief').textContent = post.imageBrief || '(no brief)';
+
+  // Feedback
+  $('feedback-tag').value = post.feedbackTag || '';
+  $('feedback-notes').value = post.imageFeedback || '';
+
+  // Footer state
+  const already = post.status === 'approved';
+  $('btn-approve').style.display = already ? 'none' : 'block';
+  $('approved-check').className = already ? 'approved-check show' : 'approved-check';
+
+  $('overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  $('panel').scrollTop = 0;
+}
+
+function renderImages(post) {
+  const grid = $('images-grid');
+  grid.innerHTML = '';
+  const urls = [
+    { key: 'imageUrlA', label: 'IMAGE A' },
+    { key: 'imageUrlB', label: 'IMAGE B' },
+    { key: 'imageUrlC', label: 'IMAGE C' },
+  ];
+  const hasAny = urls.some(u => post[u.key]);
+  if (!hasAny) {
+    grid.innerHTML = '<div class="no-images-msg">No images generated yet for this post.</div>';
+    return;
+  }
+
+  urls.forEach(({ key, label }) => {
+    const url = post[key];
+    const card = document.createElement('div');
+    card.className = 'image-card';
+    const isSelected = url && post.selectedImageUrl === url;
+    if (isSelected) card.classList.add('selected');
+
+    if (url) {
+      // Convert Google Drive URL if needed
+      const imgSrc = driveToDirectUrl(url);
+      card.innerHTML = `
+        <img src="${imgSrc}" loading="lazy" onerror="this.parentNode.querySelector('.img-placeholder').style.display='flex';this.style.display='none'">
+        <div class="img-placeholder" style="display:none">
+          <span class="img-placeholder-icon">🖼️</span>
+          <span>Image unavailable</span>
+        </div>
+        <div class="selected-badge">✓</div>
+        <div class="image-card-footer">
+          <span class="img-label">${label}</span>
+          <button class="btn-select">${isSelected ? '✓ Selected' : 'Select'}</button>
+        </div>`;
+    } else {
+      card.innerHTML = `
+        <div class="img-placeholder">
+          <span class="img-placeholder-icon">—</span>
+          <span>No image</span>
+        </div>
+        <div class="image-card-footer"><span class="img-label">${label}</span></div>`;
+    }
+
+    if (url) {
+      card.addEventListener('click', () => selectImage(url));
+    }
+    grid.appendChild(card);
+  });
+}
+
+function selectImage(url) {
+  if (state.activePost) state.activePost.selectedImageUrl = url;
+  // Re-render just the image cards with updated selection
+  if (state.activePost) renderImages(state.activePost);
+}
+
+// Convert Google Drive share URL to a direct-view URL
+function driveToDirectUrl(url) {
+  if (!url) return url;
+  // Already a direct URL (picsum, etc.)
+  if (!url.includes('drive.google.com')) return url;
+  // Extract file ID from various Drive URL shapes
+  const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) ||
+            url.match(/id=([a-zA-Z0-9_-]+)/);
+  if (m) return `https://drive.google.com/uc?export=view&id=${m[1]}`;
+  return url;
+}
+
+// ── CLOSE PANEL ───────────────────────────────────────
+function closePanel() {
+  $('overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  state.activePost = null;
+}
+
+// ── APPROVE ───────────────────────────────────────────
+async function approvePost() {
+  const ap = state.activePost;
+  if (!ap || state.saving) return;
+  state.saving = true;
+
+  const btn = $('btn-approve');
+  btn.textContent = 'Saving…'; btn.disabled = true;
+
+  const payload = {
+    pageId:           ap.id,
+    selectedCaption:  $('caption-edit').value.trim(),
+    hashtags:         $('hashtag-edit').value.trim(),
+    selectedImageUrl: ap.selectedImageUrl || '',
+    feedbackTag:      $('feedback-tag').value,
+    imageFeedback:    $('feedback-notes').value.trim(),
+    status:           'approved',
+  };
+
+  try {
+    if (!CONFIG.DEMO_MODE && CONFIG.APPROVE_WEBHOOK) {
+      const res = await fetch(CONFIG.APPROVE_WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } else {
+      // Demo mode: fake delay
+      await new Promise(r => setTimeout(r, 600));
+    }
+
+    // Update local state
+    const idx = state.posts.findIndex(p => p.id === ap.id);
+    if (idx > -1) {
+      state.posts[idx] = {
+        ...state.posts[idx], ...payload,
+        captionA: payload.selectedCaption,
+      };
+    }
+
+    btn.style.display = 'none';
+    $('approved-check').className = 'approved-check show';
+    showToast('✅ Post approved!');
+    updateSummary();
+    renderCalendar();
+
+    setTimeout(closePanel, 1000);
+  } catch(e) {
+    console.error(e);
+    showToast(`❌ Save failed: ${e.message}`, 4000);
+    btn.textContent = 'APPROVE POST ✓'; btn.disabled = false;
+  }
+  state.saving = false;
+}
+
+// ── CHAR COUNT ────────────────────────────────────────
+function updateCharCount() {
+  const v = $('caption-edit').value;
+  const el = $('char-count');
+  el.textContent = v.length;
+  el.style.color = v.length > 2200 ? 'var(--orange)' : 'var(--muted)';
+}
+
+// ── EVENT LISTENERS ───────────────────────────────────
+$('prev-month').addEventListener('click', () => {
+  state.month--;
+  if (state.month < 0) { state.month = 11; state.year--; }
+  fetchPosts();
+});
+$('next-month').addEventListener('click', () => {
+  state.month++;
+  if (state.month > 11) { state.month = 0; state.year++; }
+  fetchPosts();
+});
+$('btn-back').addEventListener('click', closePanel);
+$('btn-cancel').addEventListener('click', closePanel);
+$('btn-approve').addEventListener('click', approvePost);
+$('overlay').addEventListener('click', e => { if (e.target === $('overlay')) closePanel(); });
+$('caption-edit').addEventListener('input', updateCharCount);
+
+// Keyboard: Escape closes panel
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && $('overlay').classList.contains('open')) closePanel();
+});
+
+// ── INIT ──────────────────────────────────────────────
+fetchPosts();
+</script>
+</body>
+</html>
