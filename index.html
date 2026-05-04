@@ -267,15 +267,7 @@
       background: var(--cream);
     }
     .caption-textarea:focus { outline: none; border-color: var(--orange); background: white; }
-    .hashtag-input {
-      width: 100%;
-      border: 1.5px solid var(--border); border-radius: 8px;
-      padding: 8px 12px; margin-top: 8px;
-      font-family: 'Nunito', sans-serif; font-size: 13px;
-      color: var(--brand-pill); background: var(--cream);
-      transition: border-color .15s;
-    }
-    .hashtag-input:focus { outline: none; border-color: var(--orange); background: white; }
+
     .char-count { font-size: 11px; color: var(--muted); text-align: right; margin-top: 4px; }
 
     /* Images */
@@ -505,7 +497,6 @@
       <div class="section-label">Caption</div>
       <textarea class="caption-textarea" id="caption-edit" placeholder="Caption will appear here…"></textarea>
       <div class="char-count"><span id="char-count">0</span> chars</div>
-      <input class="hashtag-input" id="hashtag-edit" placeholder="#hashtags" type="text">
     </div>
 
     <!-- Images -->
@@ -587,9 +578,7 @@ function demoPostsForMonth(year, month) {
           ? `💪 Ready to level up your training? This ${new Date(year,month,d).toLocaleDateString('en',{weekday:'long'})} is YOUR day to show up stronger. The Abs & Assets Challenge is waiting for you.\n\nBook your spot. Show up. Do the work. 🔥\n\nDM us to get started!`
           : `Ok y'all… I almost talked myself out of today's workout lol. But I got in 12 minutes on the Total Gym and honestly? My knees thanked me. 💯 #usewhatyougotdowhatyoucan`,
         selectedCaption: '',
-        hashtags: v === 'brand'
-          ? '#StudioStrong #OFallon #AbsAndAssets #FitnessMotivation #BoutiqueGym'
-          : '#StudioStrong #OFallon #RealLife #usewhatyougotdowhatyoucan #perimenopause',
+
         imageBrief: `Clean fitness graphic, small private studio setting, warm lighting, navy and orange brand colors. ${v === 'doreen' ? 'Personal, relatable mood — no stock photo people.' : 'Motivational, bold text-forward design.'}`,
         imageUrlA: `https://picsum.photos/seed/${v}${d}a/400/400`,
         imageUrlB: `https://picsum.photos/seed/${v}${d}b/400/400`,
@@ -805,7 +794,7 @@ function openPost(id) {
   const cap = $('caption-edit');
   cap.value = post.selectedCaption || post.captionA || '';
   updateCharCount();
-  $('hashtag-edit').value = post.hashtags || '';
+
 
   // Images
   renderImages(post);
@@ -915,7 +904,6 @@ async function approvePost() {
   const payload = {
     pageId:           ap.id,
     selectedCaption:  $('caption-edit').value.trim(),
-    hashtags:         $('hashtag-edit').value.trim(),
     selectedImageUrl: ap.selectedImageUrl || '',
     feedbackTag:      $('feedback-tag').value,
     imageFeedback:    $('feedback-notes').value.trim(),
