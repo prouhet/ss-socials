@@ -145,7 +145,12 @@ body {
   transition: box-shadow .15s;
 }
 .cal-cell.other-month { opacity: .35; }
-.cal-cell.today { border-color: var(--orange); }
+.cal-cell.today {
+  border: 3px solid var(--orange);
+  background: #fff5f0;
+  box-shadow: 0 0 0 2px rgba(240,90,40,0.15);
+}
+.cal-cell.today .cal-date { color: var(--orange); font-size: 20px; }
 
 /* Highlight days where ALL posts are approved */
 .cal-cell.all-done {
@@ -202,10 +207,11 @@ body {
 
 /* APPROVED — always green regardless of voice */
 .pill.status-approved {
-  background: var(--approved) !important;
+  background: #1a8a4a !important;
   color: white !important;
-  border-color: var(--approved) !important;
+  border-color: #1a8a4a !important;
   opacity: 1 !important;
+  font-weight: 800 !important;
 }
 
 /* NOT READY (needs_photo, draft, skeleton) — muted gray outline */
@@ -831,6 +837,9 @@ function renderCalendar() {
     const dateEl = document.createElement('div');
     dateEl.className = 'cal-date';
     dateEl.innerHTML = `<span>${day}</span><span class="cal-day-check">✓</span>`;
+    if (cur && day === todayD && state.month === todayM && state.year === todayY) {
+      dateEl.innerHTML += `<span style="font-family:'Nunito',sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;background:var(--orange);color:white;padding:1px 5px;border-radius:4px;margin-left:2px;">TODAY</span>`;
+    }
     cell.appendChild(dateEl);
 
     if (cur) {
