@@ -926,7 +926,10 @@ function openPost(id) {
   $el('feedback-notes').value = post.imageFeedback || '';
 
   const already = post.status === 'approved';
-  $el('btn-approve').style.display = already ? 'none' : 'block';
+  const btn = $el('btn-approve');
+  btn.textContent = 'APPROVE POST ✓';
+  btn.disabled = false;
+  btn.style.display = already ? 'none' : 'block';
   $el('approved-check').className = already ? 'approved-check show' : 'approved-check';
 
   $el('overlay').classList.add('open');
