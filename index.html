@@ -401,6 +401,32 @@ body {
   padding: 8px 0;
 }
 
+/* Per-image rating */
+.rate-key { font-size: 12px; color: var(--muted); margin: -2px 0 10px; }
+.rate-key span { white-space: nowrap; margin-right: 12px; }
+.img-rate {
+  display: flex; gap: 4px; padding: 0 8px 8px;
+}
+.rate-btn {
+  flex: 1; min-height: 30px;
+  border: 1.5px solid var(--border); border-radius: 8px;
+  background: white; cursor: pointer;
+  font-size: 15px; line-height: 1;
+  transition: border-color .15s, background .15s;
+}
+.rate-btn span { filter: grayscale(1); opacity: .55; transition: filter .15s, opacity .15s; }
+.rate-btn:hover span, .rate-btn.on span { filter: none; opacity: 1; }
+.rate-btn:focus-visible { outline: 2px solid var(--orange); outline-offset: 1px; }
+.rate-btn.on[data-val="loved-it"]     { background: var(--approved-bg); border-color: var(--approved); }
+.rate-btn.on[data-val="ok"]           { background: #e8f0fb; border-color: var(--brand-pill); }
+.rate-btn.on[data-val="brief-missed"] { background: #fff1ea; border-color: var(--orange); }
+.manus-check {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; font-weight: 600; color: var(--navy2);
+  margin-bottom: 10px; cursor: pointer;
+}
+.manus-check input { width: 16px; height: 16px; accent-color: var(--orange); cursor: pointer; }
+
 /* Image links — for URL-only images */
 .image-link-grid { display: flex; flex-direction: column; gap: 8px; }
 .image-link-row {
@@ -507,6 +533,86 @@ body {
 #toast.show { transform: translateX(-50%) translateY(0); }
 #toast.error { background: #c62828; }
 
+/* ── MONTH SYNOPSIS ── */
+.synopsis-wrap { max-width: 1100px; margin: 0 auto; padding: 0 16px 56px; }
+.synopsis-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 26px; font-weight: 700; letter-spacing: .5px;
+  color: var(--navy); line-height: 1.1;
+}
+.synopsis-sub { font-size: 13px; color: var(--muted); margin: 2px 0 12px; }
+.synopsis-head, .syn-row {
+  display: grid; grid-template-columns: 64px 1fr 1fr; gap: 14px;
+}
+.synopsis-head {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px; font-weight: 600; letter-spacing: 1px;
+  color: var(--muted); padding: 0 12px 6px;
+}
+.synopsis-head > div { display: flex; align-items: center; gap: 6px; }
+.synopsis-list {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.syn-row { padding: 10px 12px; border-top: 1px solid var(--border); align-items: start; }
+.syn-row:first-child { border-top: none; }
+.syn-row.new-week { border-top: 2px solid #c5cfe0; }
+.syn-row.today { background: #fff5f0; box-shadow: inset 4px 0 0 var(--orange); }
+.syn-date {
+  font-family: 'Barlow Condensed', sans-serif;
+  display: flex; align-items: baseline; gap: 6px; line-height: 1.1;
+  padding-top: 1px;
+}
+.syn-dow { font-size: 13px; font-weight: 600; letter-spacing: 1px; color: var(--muted); }
+.syn-num { font-size: 20px; font-weight: 700; color: var(--navy2); }
+.syn-row.today .syn-num, .syn-row.today .syn-dow { color: var(--orange); }
+.syn-col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.syn-entry {
+  font: inherit; color: inherit; text-align: left;
+  background: none; border: none; border-left: 3px solid var(--border);
+  border-radius: 0 6px 6px 0;
+  padding: 3px 6px 3px 10px;
+  cursor: pointer; min-width: 0;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.syn-entry.brand  { border-left-color: var(--brand-pill); }
+.syn-entry.doreen { border-left-color: var(--doreen-pill); }
+.syn-entry:hover { background: #f1f4f9; }
+.syn-entry:focus-visible { outline: 2px solid var(--orange); outline-offset: 1px; }
+.syn-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.syn-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--draft); }
+.syn-entry.status-approved .syn-dot { background: var(--approved); }
+.syn-entry.status-review   .syn-dot { background: var(--review); }
+.syn-voice { display: none; }
+.syn-theme {
+  font-weight: 700; font-size: 14px; color: var(--navy);
+  flex: 1; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.syn-entry.status-notready .syn-theme { color: var(--muted); }
+.syn-time { font-size: 11px; font-weight: 600; color: var(--muted); flex-shrink: 0; }
+.syn-hook {
+  font-size: 12.5px; color: var(--navy2); opacity: .8; padding-left: 14px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.syn-none { font-size: 12px; font-style: italic; color: var(--muted); padding: 3px 0 3px 13px; }
+.synopsis-empty { padding: 28px 16px; text-align: center; font-size: 14px; color: var(--muted); }
+
+@media (max-width: 600px) {
+  .synopsis-head { display: none; }
+  .syn-row { grid-template-columns: 38px 1fr; gap: 6px 10px; }
+  .syn-col.doreen { grid-column: 2; }
+  .syn-date { flex-direction: column; align-items: flex-start; gap: 0; }
+  .syn-voice {
+    display: inline; flex-shrink: 0;
+    font-size: 10px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase;
+  }
+  .syn-entry.brand  .syn-voice { color: var(--brand-pill); }
+  .syn-entry.doreen .syn-voice { color: var(--doreen-pill); }
+}
+
 @media (max-width: 600px) {
   .calendar-grid { gap: 3px; }
   .cal-cell { min-height: 70px; padding: 5px; }
@@ -568,6 +674,18 @@ body {
   <div class="calendar-grid" id="calendar-grid"></div>
 </div>
 
+<!-- ── MONTH SYNOPSIS ── -->
+<section class="synopsis-wrap" id="synopsis">
+  <h2 class="synopsis-title" id="synopsis-title">Month at a glance</h2>
+  <p class="synopsis-sub">Tap any post to open it.</p>
+  <div class="synopsis-head">
+    <div></div>
+    <div><span class="legend-swatch" style="background:var(--brand-pill)"></span> BRAND</div>
+    <div><span class="legend-swatch" style="background:var(--doreen-pill)"></span> DOREEN</div>
+  </div>
+  <div class="synopsis-list" id="synopsis-list"></div>
+</section>
+
 <!-- ── REVIEW OVERLAY ── -->
 <div class="overlay" id="overlay">
   <div class="panel" id="panel">
@@ -596,7 +714,7 @@ body {
 
     <!-- Images -->
     <div class="panel-section">
-      <div class="section-label">Images — tap to select</div>
+      <div class="section-label">Images — tap to select, rate each one</div>
       <div id="images-container"></div>
     </div>
 
@@ -608,15 +726,11 @@ body {
 
     <!-- Feedback -->
     <div class="panel-section">
-      <div class="section-label">Image Feedback <span style="font-weight:400;font-style:italic">(optional)</span></div>
+      <div class="section-label">Image Notes <span style="font-weight:400;font-style:italic">(optional)</span></div>
+      <label class="manus-check">
+        <input type="checkbox" id="used-manus"> 🖼 Used a Manus image instead
+      </label>
       <div class="feedback-row">
-        <select class="feedback-select" id="feedback-tag">
-          <option value="">— pick a tag —</option>
-          <option value="loved-it">💚 Loved it</option>
-          <option value="ok">👍 OK</option>
-          <option value="brief-missed">🎯 Brief missed</option>
-          <option value="used-manus">🖼 Used Manus</option>
-        </select>
         <textarea class="feedback-notes" id="feedback-notes"
           placeholder="Any notes for next month's image generation…"></textarea>
       </div>
@@ -856,7 +970,7 @@ function renderCalendar() {
         pill.innerHTML = `
           <span class="pill-label">${p.voice === 'brand' ? 'Brand' : 'Doreen'}</span>
           <span class="pill-icon">${statusIcon(p.status)}</span>`;
-        pill.title = `${p.theme} — ${p.status.replace(/_/g,' ')}`;
+        pill.title = `${p.theme || '(no theme)'} — ${(p.status || 'no status').replace(/_/g,' ')}`;
         pill.addEventListener('click', () => openPost(p.id));
         pillsEl.appendChild(pill);
       });
@@ -865,6 +979,129 @@ function renderCalendar() {
     }
 
     grid.appendChild(cell);
+  });
+
+  renderSynopsis();
+}
+
+// ── MONTH SYNOPSIS ────────────────────────────────────
+const VOICE_LABEL = { brand: 'Brand', doreen: 'Doreen' };
+const DOW_SHORT = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+
+function captionHook(p) {
+  const text = (p.selectedCaption || p.captionA || '').trim();
+  return text.split('\n').map(s => s.trim()).find(Boolean) || '';
+}
+
+function synopsisEntry(p, voice) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = `syn-entry ${voice} ${pillStatusClass(p.status)}`;
+  const statusText = (p.status || 'no status').replace(/_/g, ' ');
+  btn.setAttribute('aria-label',
+    `${VOICE_LABEL[voice]}: ${p.theme || 'no theme'}, ${statusText}. Open post.`);
+
+  const top = document.createElement('span');
+  top.className = 'syn-top';
+
+  const dot = document.createElement('span');
+  dot.className = 'syn-dot';
+  dot.title = statusText;
+
+  const label = document.createElement('span');
+  label.className = 'syn-voice';
+  label.textContent = VOICE_LABEL[voice];
+
+  const theme = document.createElement('span');
+  theme.className = 'syn-theme';
+  theme.textContent = p.theme || '(no theme)';
+
+  top.append(dot, label, theme);
+  if (p.suggestedTime) {
+    const time = document.createElement('span');
+    time.className = 'syn-time';
+    time.textContent = p.suggestedTime;
+    top.appendChild(time);
+  }
+  btn.appendChild(top);
+
+  const hookText = captionHook(p);
+  if (hookText) {
+    const hook = document.createElement('span');
+    hook.className = 'syn-hook';
+    hook.textContent = hookText;
+    btn.appendChild(hook);
+  }
+
+  btn.addEventListener('click', () => openPost(p.id));
+  return btn;
+}
+
+function renderSynopsis() {
+  $el('synopsis-title').textContent = `${MONTHS[state.month]} at a glance`;
+  const list = $el('synopsis-list');
+  list.innerHTML = '';
+
+  // day number → { brand: [], doreen: [] }
+  const byDay = {};
+  state.posts.forEach(p => {
+    const day = parseInt(p.postDate?.split('-')[2], 10);
+    if (!day) return;
+    const voice = p.voice === 'brand' ? 'brand' : 'doreen';
+    if (!byDay[day]) byDay[day] = { brand: [], doreen: [] };
+    byDay[day][voice].push(p);
+  });
+
+  const days = Object.keys(byDay).map(Number).sort((a, b) => a - b);
+  if (!days.length) {
+    const empty = document.createElement('div');
+    empty.className = 'synopsis-empty';
+    empty.textContent = `No posts in ${MONTHS[state.month]} yet.`;
+    list.appendChild(empty);
+    return;
+  }
+
+  const firstDow = new Date(state.year, state.month, 1).getDay();
+  const isThisMonth = state.month === state.today.getMonth()
+    && state.year === state.today.getFullYear();
+  let lastWeek = null;
+
+  days.forEach(day => {
+    const row = document.createElement('div');
+    row.className = 'syn-row';
+    if (isThisMonth && day === state.today.getDate()) row.classList.add('today');
+
+    // Heavier divider where a new calendar week (Sunday) starts
+    const week = Math.floor((day - 1 + firstDow) / 7);
+    if (lastWeek !== null && week !== lastWeek) row.classList.add('new-week');
+    lastWeek = week;
+
+    const dateEl = document.createElement('div');
+    dateEl.className = 'syn-date';
+    const dow = document.createElement('span');
+    dow.className = 'syn-dow';
+    dow.textContent = DOW_SHORT[new Date(state.year, state.month, day).getDay()];
+    const num = document.createElement('span');
+    num.className = 'syn-num';
+    num.textContent = day;
+    dateEl.append(dow, num);
+    row.appendChild(dateEl);
+
+    ['brand', 'doreen'].forEach(voice => {
+      const col = document.createElement('div');
+      col.className = `syn-col ${voice}`;
+      const posts = byDay[day][voice];
+      if (!posts.length) {
+        const none = document.createElement('div');
+        none.className = 'syn-none';
+        none.textContent = `No ${VOICE_LABEL[voice]} post`;
+        col.appendChild(none);
+      }
+      posts.forEach(p => col.appendChild(synopsisEntry(p, voice)));
+      row.appendChild(col);
+    });
+
+    list.appendChild(row);
   });
 }
 
@@ -922,30 +1159,100 @@ function openPost(id) {
   renderImages(post);
 
   $el('panel-brief').textContent = post.imageBrief || '(no brief)';
-  $el('feedback-tag').value = post.feedbackTag || '';
+  $el('used-manus').checked = post.feedbackTag === 'used-manus';
   $el('feedback-notes').value = post.imageFeedback || '';
+
+  // Snapshot what was loaded so we can tell when an approved post has unsaved edits
+  state.loaded = editSnapshot();
 
   const already = post.status === 'approved';
   const btn = $el('btn-approve');
-  btn.textContent = 'APPROVE POST ✓';
-  btn.disabled = false;
-  btn.style.display = already ? 'none' : 'block';
-  $el('approved-check').className = already ? 'approved-check show' : 'approved-check';
+  btn.style.display = 'block';
+  btn.textContent = already ? 'SAVE CHANGES' : 'APPROVE POST ✓';
+  btn.disabled = already;            // enabled once something is edited
+  const check = $el('approved-check');
+  check.textContent = '✅ Approved';
+  check.className = already ? 'approved-check show' : 'approved-check';
 
   $el('overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
   $el('panel').scrollTop = 0;
 }
 
+// ── PER-IMAGE RATING ──────────────────────────────────
+const RATINGS = [
+  { val: 'loved-it',     icon: '💚', label: 'Loved it' },
+  { val: 'ok',           icon: '👍', label: 'OK' },
+  { val: 'brief-missed', icon: '🎯', label: 'Brief missed' },
+];
+const IMAGE_SLOTS = [
+  { key: 'imageUrlA', tagKey: 'feedbackTagA', label: 'IMAGE A' },
+  { key: 'imageUrlB', tagKey: 'feedbackTagB', label: 'IMAGE B' },
+  { key: 'imageUrlC', tagKey: 'feedbackTagC', label: 'IMAGE C' },
+];
+
+function rateImage(tagKey, val) {
+  const ap = state.activePost;
+  if (!ap) return;
+  ap[tagKey] = ap[tagKey] === val ? '' : val;   // tap again to clear
+  renderImages(ap);
+  updateSaveButton();
+}
+
+function ratingRow(post, slot) {
+  const row = document.createElement('div');
+  row.className = 'img-rate';
+  row.setAttribute('role', 'group');
+  row.setAttribute('aria-label', `Rate ${slot.label.toLowerCase()}`);
+  RATINGS.forEach(r => {
+    const on = post[slot.tagKey] === r.val;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'rate-btn' + (on ? ' on' : '');
+    b.dataset.val = r.val;
+    b.title = r.label;
+    b.setAttribute('aria-label', r.label);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    const icon = document.createElement('span');
+    icon.textContent = r.icon;
+    b.appendChild(icon);
+    b.addEventListener('click', e => { e.stopPropagation(); rateImage(slot.tagKey, r.val); });
+    row.appendChild(b);
+  });
+  return row;
+}
+
+// ── EDIT TRACKING (approved posts) ────────────────────
+function editSnapshot() {
+  return {
+    caption: $el('caption-edit').value.trim(),
+    image:   state.activePost?.selectedImageUrl || '',
+    tagA:    state.activePost?.feedbackTagA || '',
+    tagB:    state.activePost?.feedbackTagB || '',
+    tagC:    state.activePost?.feedbackTagC || '',
+    manus:   $el('used-manus').checked ? 'yes' : '',
+    notes:   $el('feedback-notes').value.trim(),
+  };
+}
+
+function hasUnsavedEdits() {
+  if (!state.loaded || !state.activePost) return false;
+  const now = editSnapshot();
+  return Object.keys(now).some(k => now[k] !== state.loaded[k]);
+}
+
+// For approved posts, the Save changes button is only live when something changed
+function updateSaveButton() {
+  const ap = state.activePost;
+  if (!ap || ap.status !== 'approved' || state.saving) return;
+  $el('btn-approve').disabled = !hasUnsavedEdits();
+}
+
 function renderImages(post) {
   const container = $el('images-container');
   container.innerHTML = '';
 
-  const urlFields = [
-    { key: 'imageUrlA', label: 'IMAGE A' },
-    { key: 'imageUrlB', label: 'IMAGE B' },
-    { key: 'imageUrlC', label: 'IMAGE C' },
-  ];
+  const urlFields = IMAGE_SLOTS;
 
   const hasAny = urlFields.some(u => post[u.key]);
   if (!hasAny) {
@@ -953,11 +1260,17 @@ function renderImages(post) {
     return;
   }
 
+  const rateKey = document.createElement('div');
+  rateKey.className = 'rate-key';
+  rateKey.innerHTML = RATINGS.map(r => `<span>${r.icon} ${r.label}</span>`).join('');
+  container.appendChild(rateKey);
+
   // Try image grid first — if images fail to load, show links
   const grid = document.createElement('div');
   grid.className = 'images-grid';
 
-  urlFields.forEach(({ key, label }) => {
+  urlFields.forEach(slot => {
+    const { key, label } = slot;
     const url = post[key];
     const card = document.createElement('div');
     card.className = 'image-card';
@@ -978,6 +1291,7 @@ function renderImages(post) {
           <span class="img-label">${label}</span>
           <button class="btn-select">${isSelected ? '✓ Selected' : 'Select'}</button>
         </div>`;
+      card.appendChild(ratingRow(post, slot));
       card.addEventListener('click', () => selectImage(url));
     } else {
       card.innerHTML = `
@@ -1012,6 +1326,7 @@ function selectImage(url) {
   if (state.activePost) {
     state.activePost.selectedImageUrl = url;
     renderImages(state.activePost);
+    updateSaveButton();
   }
 }
 
@@ -1020,6 +1335,7 @@ function closePanel() {
   $el('overlay').classList.remove('open');
   document.body.style.overflow = '';
   state.activePost = null;
+  state.loaded = null;
 }
 
 // ── APPROVE ───────────────────────────────────────────
@@ -1027,9 +1343,12 @@ async function approvePost() {
   const ap = state.activePost;
   if (!ap || state.saving) return;
 
+  const isEdit = ap.status === 'approved';
+  const idleLabel = isEdit ? 'SAVE CHANGES' : 'APPROVE POST ✓';
+
   const captionVal = $el('caption-edit').value.trim();
   if (!captionVal) {
-    showToast('⚠️ Please add a caption before approving', true);
+    showToast(`⚠️ Please add a caption before ${isEdit ? 'saving' : 'approving'}`, true);
     $el('caption-edit').focus();
     return;
   }
@@ -1042,7 +1361,11 @@ async function approvePost() {
     pageId:           ap.id,
     selectedCaption:  captionVal,
     selectedImageUrl: ap.selectedImageUrl || '',
-    feedbackTag:      $el('feedback-tag').value,
+    feedbackTag:      $el('used-manus').checked ? 'used-manus'
+                      : (ap.feedbackTag === 'used-manus' ? '' : (ap.feedbackTag || '')),
+    feedbackTagA:     ap.feedbackTagA || '',
+    feedbackTagB:     ap.feedbackTagB || '',
+    feedbackTagC:     ap.feedbackTagC || '',
     imageFeedback:    $el('feedback-notes').value.trim(),
     status:           'approved',
   };
@@ -1071,9 +1394,12 @@ async function approvePost() {
       state.posts[idx] = { ...state.posts[idx], ...payload, captionA: payload.selectedCaption };
     }
 
+    ap.status = 'approved';
+    state.loaded = editSnapshot();
     btn.style.display = 'none';
+    $el('approved-check').textContent = isEdit ? '✅ Changes saved' : '✅ Approved!';
     $el('approved-check').className = 'approved-check show';
-    showToast('✅ Post approved!');
+    showToast(isEdit ? '✅ Changes saved' : '✅ Post approved!');
     updateSummary();
     renderCalendar();
     setTimeout(closePanel, 1000);
@@ -1081,7 +1407,7 @@ async function approvePost() {
   } catch(e) {
     console.error(e);
     showToast(`❌ Save failed: ${e.message}`, true, 5000);
-    btn.textContent = 'APPROVE POST ✓'; btn.disabled = false;
+    btn.textContent = idleLabel; btn.disabled = false;
   }
 
   state.saving = false;
@@ -1110,7 +1436,9 @@ $el('btn-back').addEventListener('click', closePanel);
 $el('btn-cancel').addEventListener('click', closePanel);
 $el('btn-approve').addEventListener('click', approvePost);
 $el('overlay').addEventListener('click', e => { if (e.target === $el('overlay')) closePanel(); });
-$el('caption-edit').addEventListener('input', updateCharCount);
+$el('caption-edit').addEventListener('input', () => { updateCharCount(); updateSaveButton(); });
+$el('used-manus').addEventListener('change', updateSaveButton);
+$el('feedback-notes').addEventListener('input', updateSaveButton);
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && $el('overlay').classList.contains('open')) closePanel();
 });
