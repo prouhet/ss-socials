@@ -136,6 +136,23 @@ figcaption{padding:8px 10px;font-size:13px}
 .tag.brand{background:var(--brand)} .tag.doreen{background:var(--doreen)}
 section.post{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;margin:16px 0}
 section.post .caption{border:0;padding:0}
+table.month{width:100%;border-collapse:collapse;font-size:15px;table-layout:fixed}
+table.month th,table.month td{vertical-align:top;text-align:left;padding:10px 8px;border-bottom:1px solid var(--border)}
+table.month thead th{font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)}
+table.month thead th:first-child{width:112px}
+table.month tbody th{font-size:14px}
+table.month tr.new-week>*{border-top:2px solid #c3cddd}
+table.month tr.past{color:#56637a}
+table.month tr.today{background:#fff3ec}
+table.month tr.today th{color:var(--orange)}
+.entry+.entry{margin-top:10px}
+.hook{font-size:13px;color:var(--muted);margin-top:2px}
+.today-tag{display:inline-block;font-size:10px;font-weight:800;letter-spacing:1px;background:var(--orange);color:#fff;border-radius:4px;padding:1px 5px;margin-left:4px;vertical-align:middle}
+@media (max-width:600px){table.month thead{display:none}
+table.month tr{display:block;padding:8px 0;border-bottom:1px solid var(--border)}
+table.month tr.new-week{border-top:2px solid #c3cddd}
+table.month tr.new-week>*{border-top:0}
+table.month th,table.month td{display:block;border:0;padding:4px 4px;width:auto}}
 footer{margin-top:40px;font-size:13px;color:var(--muted);border-top:1px solid var(--border);padding-top:12px}
 @media (max-width:520px){dl.facts{grid-template-columns:1fr} dl.facts dt{margin-top:6px}}
 `;
@@ -156,7 +173,7 @@ ${extraMeta}<title>${esc(title)}</title>
 <main>
 ${body}
 <footer>
-Text-only snapshot of the Studio Strong Content Queue, taken ${STAMP}. It refreshes every couple of hours during the day.
+Text-only snapshot of the Studio Strong Content Queue, taken ${STAMP}. It refreshes once a day, early in the morning (Central time).
 Review, edit and approve posts on the <a href="../">Social Review page</a>.
 </footer>
 </main>
@@ -278,27 +295,63 @@ ${full}`;
   });
 }
 
-function indexPage(monthEntries, upcoming) {
+const captionHook = p => finalCaption(p).split('\n').map(l => l.trim()).find(Boolean) || '';
+
+// Every calendar day of the month, Brand and Doreen side by side, today highlighted.
+function monthTable(monthKey, posts, today) {
+  const [y, m] = monthKey.split('-').map(Number);
+  const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const byDay = new Map();
+  for (const p of sortPosts(posts)) {
+    if (!byDay.has(p.postDate)) byDay.set(p.postDate, { brand: [], doreen: [] });
+    byDay.get(p.postDate)[voiceKey(p)].push(p);
+  }
+  const cell = (list, voice) => list.length
+    ? list.map(p => `<div class="entry"><span class="tag ${voice}">${VOICE_LABEL[voice]}</span><a href="${p._slug}.html">${esc(p.theme || '(no theme)')}</a>
+<div class="meta">${esc(statusText(p.status))}${p.suggestedTime ? ` · ${esc(p.suggestedTime)}` : ''}</div>${captionHook(p) ? `\n<div class="hook">${esc(captionHook(p))}</div>` : ''}</div>`).join('\n')
+    : `<span class="meta">No ${VOICE_LABEL[voice]} post</span>`;
+  const rows = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso = `${monthKey}-${String(d).padStart(2, '0')}`;
+    const day = byDay.get(iso) || { brand: [], doreen: [] };
+    const cls = [iso === today ? 'today' : iso < today ? 'past' : '',
+      d > 1 && dateFromIso(iso).getUTCDay() === 0 ? 'new-week' : ''].filter(Boolean).join(' ');
+    rows.push(`<tr${cls ? ` class="${cls}"` : ''}>
+<th scope="row">${esc(fmtShort(iso))}${iso === today ? '<span class="today-tag">TODAY</span>' : ''}</th>
+<td>${cell(day.brand, 'brand')}</td>
+<td>${cell(day.doreen, 'doreen')}</td>
+</tr>`);
+  }
+  return `<table class="month">
+<thead><tr><th scope="col">Day</th><th scope="col">Brand</th><th scope="col">Doreen</th></tr></thead>
+<tbody>
+${rows.join('\n')}
+</tbody>
+</table>`;
+}
+
+function indexPage(monthEntries, monthKey, posts, today) {
   const months = monthEntries.map(({ key, count }) =>
     `<li><a href="${key}.html">${esc(monthName(key))}</a> <span class="meta">— ${count} posts</span></li>`).join('\n');
-  const soon = upcoming.length
-    ? `<ul class="day-list">\n${upcoming.map(p =>
-        `<li><strong>${esc(fmtShort(p.postDate))}</strong> <span class="tag ${voiceKey(p)}">${VOICE_LABEL[voiceKey(p)]}</span><a href="${p._slug}.html">${esc(p.theme || '(no theme)')}</a> <span class="meta">(${esc(statusText(p.status))})</span></li>`
-      ).join('\n')}\n</ul>`
-    : '<p class="meta">Nothing scheduled in the next 7 days.</p>';
+  const name = monthName(monthKey);
+  const calendar = posts.length
+    ? `<p>Every day of ${esc(name)}, past and upcoming. Tap a post for its full caption, image options, brief and notes,
+or open <a href="${monthKey}.html">all ${esc(name)} posts in full on one page</a>.</p>
+${monthTable(monthKey, posts, today)}`
+    : `<p class="meta">No posts in ${esc(name)} yet.</p>`;
   const body = `<h1>Studio Strong social posts — text copies</h1>
 <p>Plain-text copies of every post in the Studio Strong Content Queue, so ChatGPT and other AI tools can read them without running the review app.
 Each post has its own page named by date and voice: <code>${esc(SITE_URL)}posts/YYYY-MM-DD-brand.html</code> for the Brand post and <code>${esc(SITE_URL)}posts/YYYY-MM-DD-doreen.html</code> for Doreen's post.
 Each month page has every post for that month in full.</p>
-<h2>Next 7 days</h2>
-${soon}
-<h2>Months</h2>
+<h2>${esc(name)}</h2>
+${calendar}
+<h2>All months</h2>
 <ul>
 ${months}
 </ul>`;
   return page({
     title: 'Studio Strong social posts — text copies',
-    description: 'Plain-text copies of every Studio Strong Brand and Doreen social post, by month and by day.',
+    description: `Every Studio Strong Brand and Doreen social post for ${name}, day by day, plus links to every month.`,
     body,
   });
 }
@@ -338,15 +391,19 @@ async function fetchMonth(monthKey) {
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 const months = process.argv.slice(2).filter(a => /^\d{4}-\d{2}$/.test(a));
+const currentMonth = todayIso().slice(0, 7);
 const targetMonths = months.length ? months : defaultMonths();
+if (!targetMonths.includes(currentMonth)) targetMonths.push(currentMonth);   // the index always shows this month
 await mkdir(OUT_DIR, { recursive: true });
 
-const fetched = new Map();
+const results = new Map();   // every month that loaded, even if empty
+const fetched = new Map();   // months that have posts
 let failures = 0;
 for (const key of targetMonths) {
   try {
     const posts = await fetchMonth(key);
     console.log(`${key}: ${posts.length} posts`);
+    results.set(key, posts);
     if (posts.length) fetched.set(key, posts);
   } catch (e) {
     failures++;
@@ -370,7 +427,7 @@ for (const [key, posts] of fetched) {
   for (const f of stale) { await unlink(path.join(OUT_DIR, f)); removed++; }
 }
 
-// Index: every month page on disk, newest first, plus the coming week
+// Index: this month day by day, plus every month page on disk (newest first)
 const monthFiles = (await readdir(OUT_DIR)).filter(f => /^\d{4}-\d{2}\.html$/.test(f)).sort().reverse();
 const monthEntries = [];
 for (const f of monthFiles) {
@@ -378,9 +435,10 @@ for (const f of monthFiles) {
   const count = +(html.match(/<meta name="ss-count" content="(\d+)">/)?.[1] || 0);
   monthEntries.push({ key: f.replace('.html', ''), count });
 }
-const today = todayIso();
-const weekEnd = new Date(dateFromIso(today).getTime() + 7 * 86400000).toISOString().slice(0, 10);
-const upcoming = sortPosts([...fetched.values()].flat().filter(p => p.postDate >= today && p.postDate < weekEnd));
-await writeIfChanged('index.html', indexPage(monthEntries, upcoming));
+if (results.has(currentMonth)) {
+  await writeIfChanged('index.html', indexPage(monthEntries, currentMonth, results.get(currentMonth), todayIso()));
+} else {
+  console.warn(`::warning::${currentMonth} didn't load, so posts/index.html was left as it was.`);
+}
 
 console.log(`Done: ${written} written, ${unchanged} unchanged, ${removed} removed.`);
