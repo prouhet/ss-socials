@@ -380,6 +380,7 @@ body.rv-has-bar main{padding-bottom:120px}
 @media (max-width:520px){.rv-bar-actions{width:100%}.rv-btn-primary{flex:1}
 body.rv-has-bar .images{gap:6px}
 body.rv-has-bar figcaption{font-size:12px;padding:6px 6px}
+body.rv-has-bar figcaption a{white-space:nowrap}
 .rv-fig-tools{padding:0 6px 6px;gap:4px}
 .rv-rate{gap:3px}
 .rv-rate-btn{min-height:36px;font-size:15px;border-radius:6px}
