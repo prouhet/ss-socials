@@ -24,6 +24,10 @@ const SITE_URL = (process.env.SS_SITE_URL || 'https://prouhet.github.io/ss-socia
 const TZ = 'America/Chicago';
 const PREV_MONTH_GRACE_DAYS = 3;   // keep refreshing last month this many days into a new one
 const STAMP = '__SNAPSHOT_STAMP__';
+// Post pages load posts/review.js (voting, editing, approve) for people viewing
+// them in a browser. ChatGPT doesn't run scripts, so it only sees the text.
+const REVIEW_JS = 'review.js';
+let reviewJsVersion = '';
 
 // ── Dates (all in Central time) ──────────────────────────────────────────────
 function centralParts(date = new Date()) {
@@ -157,7 +161,7 @@ footer{margin-top:40px;font-size:13px;color:var(--muted);border-top:1px solid va
 @media (max-width:520px){dl.facts{grid-template-columns:1fr} dl.facts dt{margin-top:6px}}
 `;
 
-function page({ title, description, body, extraMeta = '' }) {
+function page({ title, description, body, extraMeta = '', scripts = '' }) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -177,7 +181,7 @@ Text-only snapshot of the Studio Strong Content Queue, taken ${STAMP}. It refres
 Review, edit and approve posts on the <a href="../">Social Review page</a>.
 </footer>
 </main>
-</body>
+${scripts}</body>
 </html>
 `;
 }
@@ -186,7 +190,7 @@ function factsList(p) {
   const rows = [
     ['Date', fmtLong(p.postDate)],
     ['Voice', VOICE_LONG[voiceKey(p)]],
-    ['Status', `<span class="status-${esc(p.status)}">${esc(statusText(p.status))}</span>`, true],
+    ['Status', `<span class="status-${esc(p.status)}" data-field="status">${esc(statusText(p.status))}</span>`, true],
     ['Suggested time', p.suggestedTime],
     ['Post type', p.postType],
     ['Audience', p.audience],
@@ -204,7 +208,7 @@ function imagesBlock(p) {
     if (!url) return '';
     const selected = url === safeUrl(p.selectedImageUrl);
     const notes = [selected ? '<strong>✓ Selected</strong>' : '', RATING_LABEL[p[tagKey]] || ''].filter(Boolean).join(' · ');
-    return `<figure${selected ? ' class="selected"' : ''}>
+    return `<figure data-slot="${letter}" data-url="${esc(url)}"${selected ? ' class="selected"' : ''}>
 <a href="${esc(url)}"><img src="${esc(driveThumb(url))}" alt="Image option ${letter} for: ${esc(p.theme || 'this post')}" loading="lazy"></a>
 <figcaption>Image ${letter}${notes ? ` — ${notes}` : ''} · <a href="${esc(url)}">open full size</a></figcaption>
 </figure>`;
@@ -212,7 +216,7 @@ function imagesBlock(p) {
   if (!figs.length) return '<p class="meta">No images generated yet.</p>';
   const other = safeUrl(p.selectedImageUrl) && !slots.some(([, k]) => safeUrl(p[k]) === safeUrl(p.selectedImageUrl))
     ? `<p>Selected image (not one of A–C): <a href="${esc(safeUrl(p.selectedImageUrl))}">open</a></p>` : '';
-  return `<div class="images">\n${figs.join('\n')}\n</div>${other}`;
+  return `<div class="images" data-field="images">\n${figs.join('\n')}\n</div>${other}`;
 }
 
 function postBody(p, { headingLevel = 1, includeImages = true } = {}) {
@@ -224,9 +228,9 @@ function postBody(p, { headingLevel = 1, includeImages = true } = {}) {
     `<p class="kicker ${v}">${VOICE_LABEL[v]} post · ${esc(fmtLong(p.postDate))}</p>`,
     `<${h}>${esc(p.theme || '(no theme)')}</${h}>`,
     factsList(p),
-    `<${sub}>Caption${p.selectedCaption ? ' (approved)' : ' (draft)'}</${sub}>`,
-    caption ? `<div class="caption">\n${textBlock(caption)}\n</div>\n<p class="meta">${caption.length} characters</p>`
-            : '<p class="meta">No caption yet.</p>',
+    `<${sub} data-field="caption-heading">Caption${p.status === 'approved' ? ' (approved)' : ' (draft)'}</${sub}>`,
+    caption ? `<div class="caption" data-field="caption">\n${textBlock(caption)}\n</div>\n<p class="meta" data-field="caption-count">${caption.length} characters</p>`
+            : '<p class="meta" data-field="caption">No caption yet.</p>',
   ];
   if (p.selectedCaption && p.captionA && p.selectedCaption.trim() !== p.captionA.trim()) {
     parts.push(`<${sub}>Original draft caption</${sub}>`, `<div class="caption">\n${textBlock(p.captionA)}\n</div>`);
@@ -237,7 +241,7 @@ function postBody(p, { headingLevel = 1, includeImages = true } = {}) {
   if (p.notes) parts.push(`<${sub}>Planning notes</${sub}>`, textBlock(p.notes));
   const feedback = [p.feedbackTag === 'used-manus' ? 'Used a Manus image instead.' : '', p.imageFeedback || '']
     .filter(Boolean).join('\n\n');
-  if (feedback) parts.push(`<${sub}>Image notes from review</${sub}>`, textBlock(feedback));
+  if (feedback) parts.push(`<div data-field="image-notes-static">\n<${sub}>Image notes from review</${sub}>\n${textBlock(feedback)}\n</div>`);
   return parts.join('\n');
 }
 
@@ -249,7 +253,7 @@ function postPage(p, monthKey, ordered) {
   const next = ordered.slice(i + 1).find(q => q.postDate !== p.postDate && voiceKey(q) === voiceKey(p));
   const link = q => `<a href="${q._slug}.html">${VOICE_LABEL[voiceKey(q)]} · ${esc(fmtShort(q.postDate))}</a>`;
   const body = `<nav class="crumbs"><a href="index.html">All months</a> › <a href="${monthKey}.html">${esc(monthName(monthKey))}</a> › ${esc(fmtShort(p.postDate))} ${VOICE_LABEL[voiceKey(p)]}</nav>
-<article>
+<article data-post-id="${esc(p.id)}" data-month="${monthKey}">
 ${postBody(p)}
 </article>
 <div class="pager">
@@ -259,7 +263,8 @@ ${postBody(p)}
 </div>`;
   const title = `${VOICE_LABEL[voiceKey(p)]} post, ${fmtShort(p.postDate)}: ${p.theme || '(no theme)'} — Studio Strong`;
   const description = `${VOICE_LABEL[voiceKey(p)]} social post for ${fmtLong(p.postDate)} — caption, image options, brief and notes.`;
-  return page({ title, description, body });
+  const scripts = reviewJsVersion ? `<script src="${REVIEW_JS}?v=${reviewJsVersion}" defer></script>\n` : '';
+  return page({ title, description, body, scripts });
 }
 
 function monthPage(monthKey, ordered) {
@@ -395,6 +400,9 @@ const currentMonth = todayIso().slice(0, 7);
 const targetMonths = months.length ? months : defaultMonths();
 if (!targetMonths.includes(currentMonth)) targetMonths.push(currentMonth);   // the index always shows this month
 await mkdir(OUT_DIR, { recursive: true });
+try {
+  reviewJsVersion = createHash('sha256').update(await readFile(path.join(OUT_DIR, REVIEW_JS))).digest('hex').slice(0, 10);
+} catch { console.warn(`::warning::${REVIEW_JS} not found in ${OUT_DIR}; post pages will be read-only.`); }
 
 const results = new Map();   // every month that loaded, even if empty
 const fetched = new Map();   // months that have posts
