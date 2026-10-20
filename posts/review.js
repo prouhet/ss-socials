@@ -17,10 +17,10 @@
   const CONFIG = {
     GET_POSTS_WEBHOOK: 'https://memorex.app.n8n.cloud/webhook/ss-posts',
     APPROVE_WEBHOOK:   'https://memorex.app.n8n.cloud/webhook/ss-approve',
-    // Shows a "Save draft" button that saves without approving. Only turn this
-    // on once ss-approve sets Status from the request's `status` field; if it
-    // always writes "approved", Save draft would approve the post.
-    SAVE_DRAFT_TO_NOTION: false,
+    // Shows a "Save draft" button on posts that are in review: it saves the
+    // caption, votes, pick and notes but leaves Status as ready_for_review.
+    // (ss-approve writes Status from the request's `status` field.)
+    SAVE_DRAFT_TO_NOTION: true,
   };
 
   const article = document.querySelector('article[data-post-id]');
@@ -260,11 +260,12 @@
     const isDirty = dirty();
     ui.barStatus.replaceChildren(
       el('span', { class: `rv-dot status-${post.status}` }, statusText(post.status)),
-      isDirty ? el('span', { class: 'rv-unsaved' }, ' · unsaved, kept on this device') : '');
+      isDirty ? el('span', { class: 'rv-unsaved' }, ' · unsaved, kept on this device') : '',
+      !isDirty && post.selectedCaption && !approved ? el('span', {}, ' · draft saved') : '');
     ui.discard.hidden = !isDirty;
     ui.approveBtn.textContent = saving ? 'Saving…' : approved ? 'Save changes' : 'Approve post ✓';
     ui.approveBtn.disabled = saving || (approved && !isDirty);
-    if (ui.draftBtn) { ui.draftBtn.hidden = approved; ui.draftBtn.disabled = saving || !isDirty; }
+    if (ui.draftBtn) { ui.draftBtn.hidden = post.status !== 'ready_for_review'; ui.draftBtn.disabled = saving || !isDirty; }
   }
 
   // ── Save ───────────────────────────────────────────────────────────────────
@@ -273,7 +274,8 @@
     const caption = ui.caption.value.trim();
     if (!caption) { flash('⚠️ Add a caption first', true); ui.caption.focus(); return; }
     const wasApproved = post.status === 'approved';
-    const status = approve || wasApproved ? 'approved' : post.status;
+    const status = approve || wasApproved ? 'approved' : 'ready_for_review';
+    if (!approve && post.status !== 'ready_for_review') return;   // drafts only for posts in review
     const payload = {
       pageId:           POST_ID,
       selectedCaption:  caption,
