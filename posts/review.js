@@ -17,6 +17,9 @@
   const CONFIG = {
     GET_POSTS_WEBHOOK: 'https://memorex.app.n8n.cloud/webhook/ss-posts',
     APPROVE_WEBHOOK:   'https://memorex.app.n8n.cloud/webhook/ss-approve',
+    // POST {pageId}: "SS Socials → Images" redraws just this post's 💩 images,
+    // then clears those 💩 votes. (The morning runs pick up any 💩 as well.)
+    REDO_WEBHOOK:      'https://memorex.app.n8n.cloud/webhook/ss-redo-images',
     // Shows a "Save draft" button on posts that are in review: it saves the
     // caption, votes, pick and notes but leaves Status as ready_for_review.
     // (ss-approve writes Status from the request's `status` field.)
@@ -28,6 +31,8 @@
   const POST_ID = article.dataset.postId;
   const MONTH = article.dataset.month;
   const DRAFT_KEY = `ss-socials:draft:${POST_ID}`;
+  const REDO_KEY = `ss-socials:redo:${POST_ID}`;   // same key as the main review page
+  const REDO_WAIT_MS = 15 * 60 * 1000;
 
   const RATINGS = [
     { val: 'loved-it',     icon: '💚', label: 'Loved it' },
@@ -69,6 +74,7 @@
   let cur = null;        // values on screen now
   let votesStored = false;
   let saving = false;
+  let redoing = false;
   const ui = {};
 
   init().catch(err => {
@@ -186,13 +192,16 @@
     ui.manus = el('input', { type: 'checkbox', onchange: () => { cur.manus = ui.manus.checked ? 'yes' : ''; changed(); } });
     ui.notes = el('textarea', {
       class: 'rv-notes', rows: '3', 'aria-label': 'Image notes',
-      placeholder: 'Any notes for next month’s image generation…',
+      placeholder: 'Hints for redoing 💩 images, or notes for next month…',
       oninput: () => { cur.notes = ui.notes.value.trim(); changed(); },
     });
+    ui.redoBtn = el('button', { type: 'button', class: 'rv-btn-redo', onclick: redo });
+    ui.redoHint = el('span', { class: 'rv-redo-hint' });
+    ui.redoRow = el('div', { class: 'rv-redo', hidden: true }, ui.redoBtn, ui.redoHint);
     const section = el('section', { class: 'rv-notes-wrap' },
       el('h2', {}, 'Image notes ', el('span', { class: 'rv-opt' }, '(optional)')),
       el('label', { class: 'rv-check' }, ui.manus, ' 🖼 Used a Manus image instead'),
-      ui.notes);
+      ui.notes, ui.redoRow);
     const grid = q('[data-field="images"]');
     if (old) old.replaceWith(section);
     else if (grid) (grid.nextElementSibling?.tagName === 'P' ? grid.nextElementSibling : grid).after(section);
@@ -266,6 +275,86 @@
     ui.approveBtn.textContent = saving ? 'Saving…' : approved ? 'Save changes' : 'Approve post ✓';
     ui.approveBtn.disabled = saving || (approved && !isDirty);
     if (ui.draftBtn) { ui.draftBtn.hidden = post.status !== 'ready_for_review'; ui.draftBtn.disabled = saving || !isDirty; }
+    renderRedo();
+  }
+
+  // ── Redo 💩 images ─────────────────────────────────────────────────────────
+  const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+  const slotNames = s => s.length > 1 ? `images ${s.slice(0, -1).join(', ')} and ${s[s.length - 1]}` : `image ${s[0]}`;
+  const redoSlots = () => Object.keys(SLOTS).filter(s => cur['tag' + s] === 'brief-missed' && ui.figures?.[s]?.url);
+  function redoStartedAt() {
+    try {
+      const t = Number(localStorage.getItem(REDO_KEY) || 0);
+      if (t && Date.now() - t < REDO_WAIT_MS) return t;
+      if (t) localStorage.removeItem(REDO_KEY);
+    } catch { /* storage off */ }
+    return 0;
+  }
+  function renderRedo() {
+    const slots = redoSlots();
+    const show = post.status === 'ready_for_review' && slots.length > 0 && String(post.postDate || '') >= today();
+    ui.redoRow.hidden = !show;
+    if (!show) return;
+    const started = redoStartedAt();
+    const list = slotNames(slots);
+    if (redoing) {
+      ui.redoBtn.textContent = 'Sending…'; ui.redoBtn.disabled = true;
+    } else if (started) {
+      ui.redoBtn.textContent = '⏳ Redrawing…'; ui.redoBtn.disabled = true;
+      ui.redoHint.textContent = `Started at ${new Date(started).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}. New images usually take 2–5 minutes. Refresh to check.`;
+      return;
+    } else {
+      ui.redoBtn.textContent = `🔁 Redo 💩 ${list}`;
+      ui.redoBtn.disabled = saving;
+    }
+    ui.redoHint.textContent = `Makes a new version of ${list}. Notes above are used as hints. Takes a few minutes.`;
+  }
+
+  // Saves the votes and notes (post stays in review), then asks n8n for new images.
+  async function redo() {
+    if (saving || redoing) return;
+    const slots = redoSlots();
+    if (!slots.length || post.status !== 'ready_for_review') return;
+    const caption = ui.caption.value.trim();
+    const payload = {
+      pageId:           POST_ID,
+      selectedCaption:  caption,
+      selectedImageUrl: cur.image || '',
+      feedbackTag:      cur.manus === 'yes' ? 'used-manus'
+                        : (post.feedbackTag === 'used-manus' ? '' : (post.feedbackTag || '')),
+      feedbackTagA:     cur.tagA || '',
+      feedbackTagB:     cur.tagB || '',
+      feedbackTagC:     cur.tagC || '',
+      imageFeedback:    cur.notes || '',
+      status:           'ready_for_review',
+    };
+    redoing = true; renderAll();
+    try {
+      const res = await fetch(CONFIG.APPROVE_WEBHOOK, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      if (!res.ok) throw new Error(`saving votes: HTTP ${res.status}`);
+      const result = await res.json().catch(() => ({}));
+      if (result.ok === false) throw new Error(result.error || 'saving votes failed');
+      Object.assign(post, {
+        selectedCaption: caption, selectedImageUrl: payload.selectedImageUrl,
+        feedbackTag: payload.feedbackTag, imageFeedback: payload.imageFeedback,
+        feedbackTagA: payload.feedbackTagA, feedbackTagB: payload.feedbackTagB, feedbackTagC: payload.feedbackTagC,
+      });
+      cur.caption = caption;
+      loaded = { ...cur };
+      store.clear();
+      ui.banner?.remove();
+
+      const r2 = await fetch(CONFIG.REDO_WEBHOOK, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pageId: POST_ID }) });
+      if (!r2.ok) throw new Error(`starting the redo: HTTP ${r2.status}`);
+      try { localStorage.setItem(REDO_KEY, String(Date.now())); } catch { /* storage off */ }
+      flash(`🔁 New ${slotNames(slots)} on the way. Refresh in a few minutes.`, false, 5000);
+    } catch (e) {
+      console.error(e);
+      flash(`❌ Redo didn't start: ${e.message}`, true, 6000);
+    }
+    redoing = false; renderAll();
   }
 
   // ── Save ───────────────────────────────────────────────────────────────────
@@ -361,6 +450,12 @@ body.rv-has-bar .images{grid-template-columns:repeat(3,minmax(0,1fr))}
 .rv-check{display:flex;align-items:center;gap:8px;font-size:15px;margin-bottom:8px;cursor:pointer}
 .rv-check input{width:18px;height:18px;accent-color:var(--orange)}
 .rv-notes{width:100%;font:inherit;font-size:15px;background:#fff;border:1.5px solid var(--border);border-radius:8px;padding:8px 12px;resize:vertical}
+.rv-redo{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:12px;padding:10px 12px;background:#fff1ea;border:1.5px solid #f6c3ad;border-radius:10px}
+.rv-redo[hidden]{display:none}
+.rv-btn-redo{font:inherit;font-size:14px;font-weight:800;background:#fff;color:var(--navy);border:1.5px solid var(--orange);border-radius:8px;padding:8px 14px;min-height:40px;cursor:pointer}
+.rv-btn-redo:hover{background:var(--orange);color:#fff}
+.rv-btn-redo:disabled{background:#fff;color:var(--muted);border-color:var(--border);cursor:default}
+.rv-redo-hint{flex:1;min-width:180px;font-size:13px;color:var(--navy);line-height:1.4}
 .rv-btn-ghost{font:inherit;font-size:13px;font-weight:600;background:#fff;color:var(--navy);border:1.5px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;min-height:34px}
 .rv-btn-ghost:hover{border-color:var(--navy)}
 .rv-btn-secondary{font:inherit;font-weight:700;background:#fff;color:var(--navy);border:1.5px solid var(--navy);border-radius:8px;padding:10px 16px;cursor:pointer}

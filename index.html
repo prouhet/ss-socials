@@ -470,6 +470,18 @@ body {
 }
 .feedback-notes:focus { outline: none; border-color: var(--orange); background: white; }
 
+/* Redo 💩 images */
+.redo-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 12px; padding: 10px 12px; background: #fff1ea; border: 1.5px solid #f6c3ad; border-radius: 10px; }
+.redo-row[hidden] { display: none; }
+.btn-redo {
+  font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 800;
+  background: white; color: var(--navy); cursor: pointer;
+  border: 1.5px solid var(--orange); border-radius: 8px; padding: 8px 14px; min-height: 38px;
+}
+.btn-redo:hover { background: var(--orange); color: white; }
+.btn-redo:disabled { background: white; color: var(--muted); border-color: var(--border); cursor: default; }
+.redo-hint { flex: 1; min-width: 180px; font-size: 12px; color: var(--navy2); line-height: 1.4; }
+
 /* Panel footer */
 .panel-footer {
   background: white;
@@ -760,7 +772,11 @@ body {
       </label>
       <div class="feedback-row">
         <textarea class="feedback-notes" id="feedback-notes"
-          placeholder="Any notes for next month's image generation…"></textarea>
+          placeholder="Hints for redoing 💩 images, or notes for next month…"></textarea>
+      </div>
+      <div class="redo-row" id="redo-row" hidden>
+        <button type="button" class="btn-redo" id="btn-redo">🔁 Redo 💩 images</button>
+        <span class="redo-hint" id="redo-hint"></span>
       </div>
     </div>
 
@@ -784,6 +800,8 @@ const CONFIG = {
   GET_POSTS_WEBHOOK: 'https://memorex.app.n8n.cloud/webhook/ss-posts',
   // n8n webhook: POST JSON body → updates Notion, returns {ok:true}
   APPROVE_WEBHOOK:   'https://memorex.app.n8n.cloud/webhook/ss-approve',
+  // n8n webhook: POST {pageId} → "SS Socials → Images" redraws that post's 💩 images
+  REDO_WEBHOOK:      'https://memorex.app.n8n.cloud/webhook/ss-redo-images',
   // Force demo mode (true = always show sample data)
   DEMO_MODE: false,
 };
@@ -1193,6 +1211,7 @@ function openPost(id) {
 
   // Snapshot what was loaded so we can tell when an approved post has unsaved edits
   state.loaded = editSnapshot();
+  updateRedoButton();
 
   const already = post.status === 'approved';
   const btn = $el('btn-approve');
@@ -1255,6 +1274,7 @@ function rateImage(tagKey, val) {
   ap[tagKey] = ap[tagKey] === val ? '' : val;   // tap again to clear
   renderImages(ap);
   updateSaveButton();
+  updateRedoButton();
 }
 
 function ratingRow(post, slot) {
@@ -1304,6 +1324,107 @@ function updateSaveButton() {
   const ap = state.activePost;
   if (!ap || ap.status !== 'approved' || state.saving) return;
   $el('btn-approve').disabled = !hasUnsavedEdits();
+}
+
+// ── REDO 💩 IMAGES ────────────────────────────────────
+// Saves the votes and notes (post stays in review), then asks n8n to redraw just
+// the 💩 images. n8n clears each 💩 once its new image is in, so the button goes
+// away by itself. The morning runs (1st–7th and 24th–31st) pick up any 💩 too.
+const REDO_KEY = id => `ss-socials:redo:${id}`;
+const REDO_WAIT_MS = 15 * 60 * 1000;
+const todayChicago = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+
+const slotNames = s => s.length > 1 ? `images ${s.slice(0, -1).join(', ')} and ${s[s.length - 1]}` : `image ${s[0]}`;
+function redoSlots(p) {
+  return ['A', 'B', 'C'].filter(s => p['feedbackTag' + s] === 'brief-missed' && p['imageUrl' + s]);
+}
+function redoStartedAt(id) {
+  try {
+    const t = Number(localStorage.getItem(REDO_KEY(id)) || 0);
+    if (t && Date.now() - t < REDO_WAIT_MS) return t;
+    if (t) localStorage.removeItem(REDO_KEY(id));
+  } catch (e) { /* storage off */ }
+  return 0;
+}
+
+function updateRedoButton() {
+  const ap = state.activePost;
+  const row = $el('redo-row');
+  const slots = ap ? redoSlots(ap) : [];
+  const show = !!ap && ap.status === 'ready_for_review' && slots.length > 0
+    && String(ap.postDate || '') >= todayChicago();
+  row.hidden = !show;
+  if (!show) return;
+  const btn = $el('btn-redo');
+  const hint = $el('redo-hint');
+  const started = redoStartedAt(ap.id);
+  const list = slotNames(slots);
+  if (state.redoing) {
+    btn.textContent = 'Sending…'; btn.disabled = true;
+  } else if (started) {
+    const at = new Date(started).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    btn.textContent = '⏳ Redrawing…'; btn.disabled = true;
+    hint.textContent = `Started at ${at}. New images usually take 2–5 minutes. Refresh to check.`;
+    return;
+  } else {
+    btn.textContent = `🔁 Redo 💩 ${list}`;
+    btn.disabled = false;
+  }
+  hint.textContent = `Makes a new version of ${list}. Notes above are used as hints. Takes a few minutes.`;
+}
+
+async function redoImages() {
+  const ap = state.activePost;
+  if (!ap || state.saving || state.redoing) return;
+  const slots = redoSlots(ap);
+  if (!slots.length) return;
+
+  const payload = {
+    pageId:           ap.id,
+    selectedCaption:  $el('caption-edit').value.trim(),
+    selectedImageUrl: ap.selectedImageUrl || '',
+    feedbackTag:      $el('used-manus').checked ? 'used-manus'
+                      : (ap.feedbackTag === 'used-manus' ? '' : (ap.feedbackTag || '')),
+    feedbackTagA:     ap.feedbackTagA || '',
+    feedbackTagB:     ap.feedbackTagB || '',
+    feedbackTagC:     ap.feedbackTagC || '',
+    imageFeedback:    $el('feedback-notes').value.trim(),
+    status:           'ready_for_review',
+  };
+
+  state.redoing = true;
+  updateRedoButton();
+  try {
+    if (!CONFIG.DEMO_MODE && CONFIG.APPROVE_WEBHOOK && CONFIG.REDO_WEBHOOK) {
+      // 1. Save the votes and notes so n8n sees the 💩 (and the hints).
+      const res = await fetch(CONFIG.APPROVE_WEBHOOK, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(`saving votes: HTTP ${res.status}`);
+      const result = await res.json().catch(() => ({}));
+      if (result.ok === false) throw new Error(result.error || 'saving votes failed');
+      // 2. Ask for the new images.
+      const r2 = await fetch(CONFIG.REDO_WEBHOOK, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pageId: ap.id }),
+      });
+      if (!r2.ok) throw new Error(`starting the redo: HTTP ${r2.status}`);
+    } else {
+      await new Promise(r => setTimeout(r, 700));
+    }
+
+    const idx = state.posts.findIndex(p => p.id === ap.id);
+    if (idx > -1) state.posts[idx] = { ...state.posts[idx], ...payload };
+    Object.assign(ap, payload);
+    state.loaded = editSnapshot();
+    try { localStorage.setItem(REDO_KEY(ap.id), String(Date.now())); } catch (e) { /* storage off */ }
+    updateSaveButton();
+    showToast(`🔁 New ${slotNames(slots)} on the way. Refresh in a few minutes.`, false, 5000);
+  } catch (e) {
+    console.error(e);
+    showToast(`❌ Redo didn't start: ${e.message}`, true, 5000);
+  }
+  state.redoing = false;
+  updateRedoButton();
 }
 
 function renderImages(post) {
@@ -1494,6 +1615,7 @@ $el('btn-back').addEventListener('click', closePanel);
 $el('btn-cancel').addEventListener('click', closePanel);
 $el('btn-approve').addEventListener('click', approvePost);
 $el('btn-gpt-link').addEventListener('click', copyGptLink);
+$el('btn-redo').addEventListener('click', redoImages);
 $el('overlay').addEventListener('click', e => { if (e.target === $el('overlay')) closePanel(); });
 $el('caption-edit').addEventListener('input', () => { updateCharCount(); updateSaveButton(); });
 $el('used-manus').addEventListener('change', updateSaveButton);
