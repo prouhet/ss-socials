@@ -1,0 +1,57 @@
+name: Refresh post text copies
+
+# Rebuilds posts/ (plain-HTML copies of every post, readable by ChatGPT)
+# from the n8n ss-posts webhook and commits only if something changed.
+#
+# Runs once a day. Each run calls the webhook once per month refreshed
+# (usually 2), and every webhook call counts as an n8n execution.
+# For an immediate refresh, use "Run workflow" on the Actions tab.
+
+on:
+  schedule:
+    # 10:17 UTC = 5:17am CDT / 4:17am CST
+    - cron: '17 10 * * *'
+  workflow_dispatch:
+    inputs:
+      months:
+        description: 'Months to rebuild, space-separated (e.g. "2026-10 2026-11"). Blank = current + next.'
+        required: false
+        default: ''
+  repository_dispatch:
+    types: [refresh-posts]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: snapshot-posts
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Build text copies
+        env:
+          MONTHS: ${{ github.event.inputs.months }}
+        run: node scripts/build-snapshots.mjs $MONTHS
+
+      - name: Commit if changed
+        run: |
+          git add posts
+          if git diff --cached --quiet; then
+            echo "No changes."
+            exit 0
+          fi
+          git config user.name "ss-socials bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Refresh post text copies"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
